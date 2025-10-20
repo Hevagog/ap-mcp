@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from .service import random_value
 
 router = APIRouter()
 
@@ -7,4 +8,5 @@ router = APIRouter()
     "/tools",
 )
 async def list_tools():
-    return {"message": "No tools as of yet."}
+    tools = random_value()
+    return {"tools": tools}
