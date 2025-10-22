@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .service import random_value
+from .service import list_available_tools, random_value
 
 router = APIRouter()
 
@@ -8,5 +8,13 @@ router = APIRouter()
     "/tools",
 )
 async def list_tools():
-    tools = random_value()
+    tools = list_available_tools()
     return {"tools": tools}
+
+
+@router.get(
+    "/tools/random",
+)
+async def get_random_tool():
+    tool = random_value()
+    return {"tool": tool}
