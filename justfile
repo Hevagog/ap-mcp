@@ -10,14 +10,14 @@ clean-images:
 [group('docker')]
 [doc('build the docker image')]
 build:
-    docker build -t ap-mcp .
+    docker compose build
 
 [group('docker')]
-[doc('run the docker container. Make sure to have a .env file with the Gemini API key named API_KEY')]
+[doc('runs docker compose. Make sure to have a .env file with the Gemini API key named API_KEY')]
 run:
-    docker run -d -p 5000:5000 --env-file .env ap-mcp
+    docker compose up
 
 [group('docker')]
 [doc('Run an interactive shell in a new container for a service')]
-shell:
-    docker run -it ap-mcp /bin/sh
+shell NAME:
+    docker compose run --rm --service-ports {{NAME}} /bin/bash

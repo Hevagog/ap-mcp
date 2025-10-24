@@ -1,0 +1,41 @@
+services:
+  mcp_server:
+    build: .
+    container_name: mcp_server
+    ports:
+      - "5000:5000"
+    environment:
+      - MCP_SERVER_PORT=5000
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os,urllib.request;port=os.environ.get(\"MCP_SERVER_PORT\",\"5000\");urllib.request.urlopen(f\"http://localhost:{port}/ready\")'"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - mcp_net
+
+  calculator_tool:
+    build:
+      context: .
+      dockerfile: tools/calculator_tool/Dockerfile
+    depends_on:
+      mcp_server:
+        condition: service_healthy
+        restart: true
+    container_name: calculator_tool
+    ports:
+      - "5080:5080"
+    environment:
+      - TOOL_PORT=5080
+      - MCP_SERVER_PORT=5000
+      - MCP_SERVER_URL=http://mcp_server:5000
+      - TOOL_PUBLIC_URL=http://calculator_tool:5080
+    networks:
+      - mcp_net
+
+networks:
+  mcp_net:
+    driver: bridge
