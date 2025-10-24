@@ -4,6 +4,9 @@ from typing import List, Optional
 
 class MethodSpec(BaseModel):
     name: str = Field(..., description="Method name exposed by the tool")
+    description: Optional[str] = Field(
+        default=None, description="Docstring/summary for this method"
+    )
     path: Optional[str] = Field(
         default=None, description="Optional explicit HTTP path for this method"
     )

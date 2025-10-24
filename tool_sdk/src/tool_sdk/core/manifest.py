@@ -4,14 +4,14 @@ from typing import List, Optional
 
 class MethodSpec(BaseModel):
     name: str = Field(..., description="Method name exposed by the tool")
-    path: Optional[str] = Field(default=None)
-    http_method: Optional[str] = Field(default=None)
+    description: Optional[str] = Field(default=None, description="Docstring/summary for this method")
+    path: Optional[str] = Field(default=None, description="HTTP path for invoking this method")
+    http_method: Optional[str] = Field(default=None, description="HTTP method used to invoke this method (e.g., GET, POST)")
 
 
 class Manifest(BaseModel):
     name: str
     description: str = ""
-    tags: List[str] = []
     base_url: str
     methods: List[MethodSpec] = []
 
@@ -20,14 +20,13 @@ def build_manifest(
     *,
     name: str,
     description: str = "",
-    tags: Optional[List[str]] = None,
     base_url: str,
-    methods: Optional[List[str]] = None,
+    methods: Optional[List[MethodSpec | str]] = None,
 ) -> Manifest:
-    return Manifest(
-        name=name,
-        description=description or "",
-        tags=tags or [],
-        base_url=base_url,
-        methods=[MethodSpec(name=m) for m in (methods or [])],
-    )
+    specs: List[MethodSpec] = []
+    for m in (methods or []):
+        if isinstance(m, MethodSpec):
+            specs.append(m)
+        else:
+            specs.append(MethodSpec(name=str(m)))
+    return Manifest(name=name, description=description or "", base_url=base_url, methods=specs)

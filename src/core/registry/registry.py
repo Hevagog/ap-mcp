@@ -41,7 +41,11 @@ class Registry:
             logger.debug(
                 f"Registered tool: {meta_entry['name']} with metadata: {meta_entry}"
             )
-            self._vec_db.add(meta_entry["tags"])
+            try:
+                self._vec_db.add([meta_entry["description"]])
+            except Exception as e:
+                logger.warning(f"Failed to index tool description: {e}")
+
             return func
 
         return decorator
@@ -64,11 +68,19 @@ class Registry:
                 f"Tool '{tool_name}' registered without methods; only metadata stored."
             )
 
-        def _make_proxy(method_name: str) -> Callable:
+        def _make_proxy(
+            method_name: str, path: str | None = None, http_method: str | None = None
+        ) -> Callable:
             def _proxy(*args, **kwargs):
                 payload = {"method": method_name, "args": list(args), "kwargs": kwargs}
                 with httpx.Client(timeout=30.0) as client_http:
-                    resp = client_http.post(f"{base_url}/invoke", json=payload)
+                    target_path = path or f"/invoke/{method_name}"
+                    url = f"{base_url}{target_path}"
+                    method = (http_method or "POST").upper()
+                    if method == "GET":
+                        resp = client_http.get(url, params=payload)
+                    else:
+                        resp = client_http.post(url, json=payload)
                     resp.raise_for_status()
                     data = resp.json()
                     return data.get("result", data)
@@ -93,7 +105,9 @@ class Registry:
 
         logger.debug(f"Registered tool metadata: {meta_entry}")
 
-        self._vec_db.add(tags)
+        if description:
+            self._vec_db.add([description])
+
         logger.info(f"Registered external tool: {tool_name} @ {base_url}")
 
         for m in methods:
@@ -101,18 +115,23 @@ class Registry:
             if not m_name:
                 continue
             fq_name = f"{tool_name}.{m_name}"
+            m_desc = m.get("description") or f"Proxy to {tool_name}.{m_name}"
+            m_path = m.get("path")
+            m_http = m.get("http_method")
             entry = {
                 "name": fq_name,
                 "title": f"{tool_name}:{m_name}",
-                "description": f"Proxy to {tool_name}.{m_name}",
+                "description": m_desc,
                 "tags": tags,
-                "callable": _make_proxy(m_name),
+                "callable": _make_proxy(m_name, path=m_path, http_method=m_http),
                 "external": True,
                 "base_url": base_url,
                 "version": tool_data.get("version"),
             }
             self.tool_registry[fq_name] = entry
             logger.debug(f"Registered method proxy: {fq_name}")
+            if m_desc:
+                self._vec_db.add([m_desc])
 
     def list_tools(self):
         return self._get_tool_names()
