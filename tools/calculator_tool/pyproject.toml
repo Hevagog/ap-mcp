@@ -1,0 +1,5 @@
+[project]
+name = "calculator_tool"
+version = "0.1.0"
+description = "Dummy calculator tool for MCP"
+dependencies = ["tool_sdk>=0.1.0"]
