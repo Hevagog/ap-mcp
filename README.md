@@ -26,6 +26,11 @@ Please create a `.env` file in the project root with the `API_KEY` variable set 
 	 - POST `/invoke/{function_name}` → per-function endpoint (e.g., `/invoke/add`)
 	 - POST `/invoke` → generic invoker with body `{method, args, kwargs}` (kept for compatibility)
 
+## UI
+
+A Streamlit-based chat interface is available at http://localhost:8501.
+It connects to the MCP Server and uses Gemini to intelligently invoke registered tools.
+
 ## Authoring tools
 
 Annotate functions with `@mcp_tool(name=...)` and pass them to `create_app`:
@@ -52,4 +57,3 @@ app = create_app([add])  # or multiple functions: create_app([add, mul, ...])
 		- a top-level entry for the tool group (metadata)
 		- a per-method proxy (e.g., `calculator.add`) that calls the tool’s `/invoke/{method}`.
  5. Server indexes semantics using the method docstrings (vector DB).
-

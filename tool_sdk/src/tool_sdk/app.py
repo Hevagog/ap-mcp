@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from tool_sdk.core.manifest import Manifest, MethodSpec, build_manifest
+from tool_sdk.core.introspection import get_function_schema
 from tool_sdk.logging import get_logger
 
 logger = get_logger(__name__)
@@ -89,10 +90,13 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
         method_specs: List[MethodSpec] = []
         for idx, method_name in enumerate(data["methods"]):
             doc = data["descriptions"][idx]
+            fn = method_map[method_name]
+            schema = get_function_schema(fn)
             method_specs.append(
                 MethodSpec(
                     name=method_name,
                     description=doc,
+                    parameters=schema,
                     path=f"/invoke/{method_name}",
                     http_method="POST",
                 )

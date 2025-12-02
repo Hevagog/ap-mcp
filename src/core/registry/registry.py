@@ -118,10 +118,12 @@ class Registry:
             m_desc = m.get("description") or f"Proxy to {tool_name}.{m_name}"
             m_path = m.get("path")
             m_http = m.get("http_method")
+            m_params = m.get("parameters", {})
             entry = {
                 "name": fq_name,
                 "title": f"{tool_name}:{m_name}",
                 "description": m_desc,
+                "parameters": m_params,
                 "tags": tags,
                 "callable": _make_proxy(m_name, path=m_path, http_method=m_http),
                 "external": True,
@@ -143,6 +145,12 @@ class Registry:
 
     def _get_tool_names(self):
         return list(self.tool_registry.keys())
+
+    def get_tool_definitions(self):
+        defs = {}
+        for k, v in self.tool_registry.items():
+            defs[k] = {key: val for key, val in v.items() if key != "callable"}
+        return defs
 
 
 registry = Registry("default")
