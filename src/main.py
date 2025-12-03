@@ -3,6 +3,7 @@ import uvicorn
 import os
 from core import get_logger, registry_router
 from core.registry.registry import registry as tool_registry
+from core.communication import communication_router
 from core_tools import tool_manager
 
 logger = get_logger(__name__)
@@ -11,6 +12,7 @@ logger = get_logger(__name__)
 app = FastAPI()
 app.include_router(tool_manager.router)
 app.include_router(registry_router.router)
+app.include_router(communication_router)
 
 
 @app.get("/", include_in_schema=False)

@@ -36,20 +36,20 @@ services:
     networks:
       - mcp_net
 
-  ui:
-    build: ui
-    container_name: mcp_ui
-    ports:
-      - "8501:8501"
-    environment:
-      - MCP_SERVER_URL=http://mcp_server:5000
-    env_file:
-      - .env
-    depends_on:
-      mcp_server:
-        condition: service_healthy
-    networks:
-      - mcp_net
+  # ui:
+  #   build: ui
+  #   container_name: mcp_ui
+  #   ports:
+  #     - "8501:8501"
+  #   environment:
+  #     - MCP_SERVER_URL=http://mcp_server:5000
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     mcp_server:
+  #       condition: service_healthy
+  #   networks:
+  #     - mcp_net
 
 networks:
   mcp_net:

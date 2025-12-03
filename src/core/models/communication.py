@@ -1,7 +1,9 @@
 from pydantic import BaseModel
 
 
-class MessageRequest(BaseModel): ...
+class MessageRequest(BaseModel):
+    content: str
 
 
-class MessageResponse(BaseModel): ...
+class MessageResponse(BaseModel):
+    content: str
