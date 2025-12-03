@@ -18,11 +18,13 @@ class Registry:
     def __init__(self, name: str):
         logger.debug(f"Initializing registry: {name}")
         self.tool_registry = {}
+        self._model = "gemini-embedding-001"
+        self.config = types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY")
         self._vec_db = VectorDB(
             embedding_function=partial(
                 client.models.embed_content,
-                model="gemini-embedding-001",
-                config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"),
+                model=self._model,
+                config=self.config,
             )
         )
 
@@ -42,7 +44,7 @@ class Registry:
                 f"Registered tool: {meta_entry['name']} with metadata: {meta_entry}"
             )
             try:
-                self._vec_db.add([meta_entry["description"]])
+                self._vec_db.add(meta_entry["description"], meta_entry["name"])
             except Exception as e:
                 logger.warning(f"Failed to index tool description: {e}")
 
@@ -106,7 +108,10 @@ class Registry:
         logger.debug(f"Registered tool metadata: {meta_entry}")
 
         if description:
-            self._vec_db.add([description])
+            try:
+                self._vec_db.add(description, tool_name)
+            except Exception as e:
+                logger.warning(f"Failed to index tool description for {tool_name}: {e}")
 
         logger.info(f"Registered external tool: {tool_name} @ {base_url}")
 
@@ -133,7 +138,12 @@ class Registry:
             self.tool_registry[fq_name] = entry
             logger.debug(f"Registered method proxy: {fq_name}")
             if m_desc:
-                self._vec_db.add([m_desc])
+                try:
+                    self._vec_db.add(m_desc, fq_name)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to index method description for {fq_name}: {e}"
+                    )
 
     def list_tools(self):
         return self._get_tool_names()
@@ -151,6 +161,9 @@ class Registry:
         for k, v in self.tool_registry.items():
             defs[k] = {key: val for key, val in v.items() if key != "callable"}
         return defs
+
+    def query_tools_by_description(self, description: str, top_k=5):
+        return self._vec_db.text_query(description, top_k=top_k)
 
 
 registry = Registry("default")
