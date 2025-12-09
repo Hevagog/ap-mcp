@@ -1,13 +1,23 @@
+x-ap-mcp: &ap-mcp-config
+  environment:
+    - FLAVOR=localdev
+  image: apmcp-dev
+  pull_policy: never
+  volumes:
+    - "./:/code/"
+  env_file:
+    - .env
+
+
 services:
   mcp_server:
-    build: .
-    container_name: mcp_server
-    ports:
-      - "5000:5000"
-    environment:
-      - MCP_SERVER_PORT=5000
-    env_file:
-      - .env
+    <<: *ap-mcp-config
+    build:
+      context: ./
+      args:
+        - BUILD_COMMIT_SHA=localdev
+    command: >-
+      bash -c "uv run --no-sync python main:app --host 0.0.0.0 --reload --port 80"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import os,urllib.request;port=os.environ.get(\"MCP_SERVER_PORT\",\"5000\");urllib.request.urlopen(f\"http://localhost:{port}/ready\")'"]
       interval: 3s

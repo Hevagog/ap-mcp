@@ -1,23 +1,61 @@
-FROM python:3.13-slim AS builder
+FROM python:3.13-slim-trixie
 
-RUN pip install --no-cache-dir uv
+# Install compilation dependencies
+RUN apt update && apt install -y \
+    dumb-init \
+    git \
+    python3-dev \
+    wget \
+    && apt clean && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Install just
+ENV JUST_VERSION=1.40.0
+RUN wget -qO- \
+    "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+    | tar -xz -C /usr/local/bin just
 
-COPY pyproject.toml uv.lock ./
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.19 /uv /uvx /bin/
 
-RUN uv sync
+# Allows docker to cache installed dependencies between builds
+WORKDIR /code
 
-FROM python:3.13-slim AS runner
+# Set uv environment as global instead of .venv
+# ENV UV_PROJECT_ENVIRONMENT="/usr/local"
+# ENV UV_SYSTEM_PYTHON=true
 
-RUN pip install --no-cache-dir uv
+# Installing "standard" dependencies only, without dev. Done before getting commit sha to cache this layer
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --no-dev --no-install-project --locked
 
-WORKDIR /app
+ARG BUILD_COMMIT_SHA
+ENV BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA:-}
 
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/pyproject.toml ./
-COPY src/ ./src/
+# Installing dev dependencies only (on top of standard dependencies installed above). Triggered only for test image.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    if [ "$BUILD_COMMIT_SHA" = "localdev" ]; then \
+    	uv sync --no-install-project --locked; \
+    fi
 
-EXPOSE 5000
+# Adds our application code to the image
+COPY . /code
+WORKDIR /code/src
 
-CMD ["uv", "run","src/main.py"]
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    if [ "$BUILD_COMMIT_SHA" = "localdev" ]; then \
+    	uv sync --locked; \
+    else \
+    	uv sync --no-dev --locked; \
+    fi
+
+ENTRYPOINT ["/code/docker-entrypoint.sh"]
+
+EXPOSE 5000/tcp
+
+# Runs the production server
+CMD ["uv", "run", "--no-sync", "python", "main.py"]
