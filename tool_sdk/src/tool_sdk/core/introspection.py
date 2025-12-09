@@ -2,7 +2,7 @@ import inspect
 from typing import Callable, Any, Dict, get_type_hints
 
 
-def get_function_schema(func: Callable) -> Dict[str, Any]:
+def get_function_schema(func: Callable) -> dict[str, Any]:
     """
     Generates a JSON Schema for the arguments of a function.
     """

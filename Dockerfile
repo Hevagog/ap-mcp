@@ -55,7 +55,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENTRYPOINT ["/code/docker-entrypoint.sh"]
 
-EXPOSE 5000/tcp
+EXPOSE 80/tcp
 
 # Runs the production server
-CMD ["uv", "run", "--no-sync", "python", "main.py"]
+CMD ["uv", "run", "--no-sync", "python", "main:app", "--host", "0.0.0.0", "--port", "80"]

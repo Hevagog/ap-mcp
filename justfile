@@ -8,8 +8,7 @@ TEST_PATH := "tests"
 ANSWERS_FILE := ".copier/.copier-answers.copier-python-project.yml"
 
 [doc('Default recipe - shows available commands')]
-default:
-    @just --list --unsorted
+default: help
 
 [group('docker')]
 [doc('cleanup unused images')]
@@ -30,9 +29,6 @@ run:
 [doc('Run an interactive shell in a new container for a service')]
 shell NAME:
     docker compose run --rm --service-ports {{NAME}} /bin/bash
-
-[doc("Command run when 'just' is called without any arguments")]
-default: help
 
 [doc("Show this help message")]
 @help:
