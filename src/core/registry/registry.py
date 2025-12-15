@@ -1,9 +1,10 @@
-from typing import Callable
+import os
+from functools import partial
+from typing import Any, Callable
+
+import httpx
 from google import genai
 from google.genai import types
-from functools import partial
-import httpx
-import os
 
 from core import get_logger
 from core.vec_db import VectorDB
@@ -16,8 +17,8 @@ logger = get_logger(__name__)
 
 class Registry:
     def __init__(self, name: str):
-        logger.debug(f"Initializing registry: {name}")
-        self.tool_registry = {}
+        logger.debug("Initializing registry", extra={"registry_name": name})
+        self.tool_registry: dict[str, dict[str, Any]] = {}
         self._model = "gemini-embedding-001"
         self.config = types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY")
         self._vec_db = VectorDB(
@@ -28,9 +29,8 @@ class Registry:
             )
         )
 
-    def core_tool(self, name: str | None = None, tags: list[str] | None = None, **meta):
-
-        def decorator(func: Callable):
+    def core_tool(self, name: str | None = None, tags: list[str] | None = None, **meta: Any) -> Callable:
+        def decorator(func: Callable) -> Callable:
             meta_entry = {
                 "name": name or func.__name__,
                 "title": (func.__doc__ or "").splitlines()[0] if func.__doc__ else "",
@@ -41,19 +41,19 @@ class Registry:
             }
             self.tool_registry[meta_entry["name"]] = meta_entry
             logger.debug(
-                f"Registered tool: {meta_entry['name']} with metadata: {meta_entry}"
+                "Registered tool with metadata",
+                extra={"meta_entry": meta_entry, "tool_name": meta_entry["name"]},
             )
             try:
-                self._vec_db.add(meta_entry["description"], meta_entry["name"])
-            except Exception as e:
-                logger.warning(f"Failed to index tool description: {e}")
+                self._vec_db.add([meta_entry["description"]])
+            except Exception:
+                logger.exception("Failed to index tool description")
 
             return func
 
         return decorator
 
-    def register_tool(self, tool_data: dict):
-
+    def register_tool(self, tool_data: dict) -> None:
         required = ["name", "base_url"]
         for k in required:
             if k not in tool_data:
@@ -67,14 +67,13 @@ class Registry:
 
         if not methods:
             logger.warning(
-                f"Tool '{tool_name}' registered without methods; only metadata stored."
+                "Tool registered without methods; only metadata stored.",
+                extra={"tool_name": tool_name},
             )
 
-        def _make_proxy(
-            method_name: str, path: str | None = None, http_method: str | None = None
-        ) -> Callable:
-            def _proxy(*args, **kwargs):
-                payload = {"method": method_name, "args": list(args), "kwargs": kwargs}
+        def _make_proxy(method_name: str, path: str | None = None, http_method: str | None = None) -> Callable:
+            def _proxy(*args: Any, **kwargs: Any) -> Any:
+                payload = {"method": method_name, "args": list(args), "kwargs": str(kwargs)}
                 with httpx.Client(timeout=30.0) as client_http:
                     target_path = path or f"/invoke/{method_name}"
                     url = f"{base_url}{target_path}"
@@ -105,15 +104,15 @@ class Registry:
         }
         self.tool_registry[tool_name] = meta_entry
 
-        logger.debug(f"Registered tool metadata: {meta_entry}")
+        logger.debug("Registered tool metadata", extra={"meta_entry": meta_entry})
 
         if description:
             try:
                 self._vec_db.add(description, tool_name)
             except Exception as e:
-                logger.warning(f"Failed to index tool description for {tool_name}: {e}")
+                logger.warning("Failed to index tool description", extra={"tool_name": tool_name, "exception": e})
 
-        logger.info(f"Registered external tool: {tool_name} @ {base_url}")
+        logger.info("Registered external tool", extra={"tool_name": tool_name, "base_url": base_url})
 
         for m in methods:
             m_name = m.get("name")
@@ -136,33 +135,31 @@ class Registry:
                 "version": tool_data.get("version"),
             }
             self.tool_registry[fq_name] = entry
-            logger.debug(f"Registered method proxy: {fq_name}")
+            logger.debug("Registered method proxy", extra={"fq_name": fq_name})
             if m_desc:
                 try:
                     self._vec_db.add(m_desc, fq_name)
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to index method description for {fq_name}: {e}"
-                    )
+                except Exception:
+                    logger.exception("Failed to index method description", extra={"method_name": fq_name})
 
-    def list_tools(self):
+    def list_tools(self) -> list[str]:
         return self._get_tool_names()
 
-    def call_tool(self, name: str, *args, **kwargs):
+    def call_tool(self, name: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
         if name not in self.tool_registry:
             raise KeyError(f"Tool '{name}' not registered")
         return self.tool_registry[name]["callable"](*args, **kwargs)
 
-    def _get_tool_names(self):
+    def _get_tool_names(self) -> list[str]:
         return list(self.tool_registry.keys())
 
-    def get_tool_definitions(self):
+    def get_tool_definitions(self) -> dict[str, dict[str, Any]]:
         defs = {}
         for k, v in self.tool_registry.items():
             defs[k] = {key: val for key, val in v.items() if key != "callable"}
         return defs
 
-    def query_tools_by_description(self, description: str, top_k=5):
+    def query_tools_by_description(self, description: str, top_k: int = 5) -> list[dict]:
         return self._vec_db.text_query(description, top_k=top_k)
 
 

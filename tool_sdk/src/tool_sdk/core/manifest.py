@@ -7,7 +7,7 @@ class MethodSpec(BaseModel):
     description: Optional[str] = Field(
         default=None, description="Docstring/summary for this method"
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         default_factory=dict, description="JSON Schema for the method parameters"
     )
     path: Optional[str] = Field(
@@ -23,7 +23,7 @@ class Manifest(BaseModel):
     name: str
     description: str = ""
     base_url: str
-    methods: List[MethodSpec] = []
+    methods: list[MethodSpec] = []
 
 
 def build_manifest(
@@ -31,9 +31,9 @@ def build_manifest(
     name: str,
     description: str = "",
     base_url: str,
-    methods: Optional[List[MethodSpec | str]] = None,
+    methods: Optional[list[MethodSpec | str]] = None,
 ) -> Manifest:
-    specs: List[MethodSpec] = []
+    specs: list[MethodSpec] = []
     for m in methods or []:
         if isinstance(m, MethodSpec):
             specs.append(m)

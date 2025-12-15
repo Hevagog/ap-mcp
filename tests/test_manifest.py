@@ -1,15 +1,23 @@
-from pathlib import Path
 import importlib.util
+import types
+from pathlib import Path
 
 
-def load_module(path: Path, name: str):
+def load_module(path: Path, name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, str(path))
+    if spec is None:
+        raise ImportError(f"Cannot load module {name} from {path}")
+
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    loader = spec.loader
+    if loader is None:
+        raise ImportError(f"Cannot load module {name} from {path}")
+
+    loader.exec_module(mod)
     return mod
 
 
-def test_build_manifest_from_strings():
+def test_build_manifest_from_strings() -> None:
     top = Path(__file__).resolve().parents[1]
     manifest_path = top / "tool_sdk" / "src" / "tool_sdk" / "core" / "manifest.py"
     mod = load_module(manifest_path, "tool_sdk_manifest")
@@ -21,14 +29,14 @@ def test_build_manifest_from_strings():
     assert all(hasattr(mm, "name") for mm in m.methods)
 
 
-def test_build_manifest_with_methodspec():
+def test_build_manifest_with_methodspec() -> None:
     top = Path(__file__).resolve().parents[1]
     manifest_path = top / "tool_sdk" / "src" / "tool_sdk" / "core" / "manifest.py"
     mod = load_module(manifest_path, "tool_sdk_manifest2")
     build_manifest = mod.build_manifest
-    MethodSpec = mod.MethodSpec
+    method_spec = mod.MethodSpec
 
-    ms = MethodSpec(name="x", description="d")
+    ms = method_spec(name="x", description="d")
     m = build_manifest(name="t2", base_url="http://y", methods=[ms])
-    assert isinstance(m.methods[0], MethodSpec)
+    assert isinstance(m.methods[0], method_spec)
     assert m.methods[0].description == "d"
