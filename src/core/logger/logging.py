@@ -2,11 +2,10 @@ import logging
 import logging.config
 import os
 import sys
+import tomllib
 from datetime import datetime
 from logging import Logger
 from typing import Optional
-import tomllib
-
 
 _logger_configured = False
 
@@ -14,9 +13,7 @@ _logger_configured = False
 def _get_logging_config() -> dict:
     """Get logging configuration from verbose_config.toml"""
     try:
-        verbose_config_path = os.path.join(
-            os.path.dirname(__file__), "verbose_config.toml"
-        )
+        verbose_config_path = os.path.join(os.path.dirname(__file__), "verbose_config.toml")
         if not os.path.exists(verbose_config_path):
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
             verbose_config_path = os.path.join(project_root, "verbose_config.toml")
@@ -30,9 +27,7 @@ def _get_logging_config() -> dict:
             return {"log_to_console": True, "log_to_file": False}
 
     except (FileNotFoundError, tomllib.TOMLDecodeError, OSError) as e:
-        sys.stderr.write(
-            f"Warning: Could not read verbose_config.toml: {e}. Using defaults.\n"
-        )
+        sys.stderr.write(f"Warning: Could not read verbose_config.toml: {e}. Using defaults.\n")
         return {"log_to_console": True, "log_to_file": False}
 
 
@@ -56,9 +51,7 @@ def configure_logger() -> None:
             if "pytest" in sys.modules:
                 log_file_name = "pytest_log.log"
             else:
-                log_file_name = (
-                    datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_piper_log.log"
-                )
+                log_file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_piper_log.log"
 
             log_file_path = os.path.join(log_dir, log_file_name)
 
@@ -68,9 +61,7 @@ def configure_logger() -> None:
                     pass
                 config_defaults["logfilename"] = log_file_path
             except OSError as e:
-                sys.stderr.write(
-                    f"Warning: Could not create/access log file {log_file_path}: {e}\n"
-                )
+                sys.stderr.write(f"Warning: Could not create/access log file {log_file_path}: {e}\n")
                 log_to_file = False
 
         # Use existing logging.conf if file logging is enabled, otherwise configure programmatically
@@ -85,9 +76,7 @@ def configure_logger() -> None:
                         disable_existing_loggers=False,
                     )
                 except Exception as e:
-                    sys.stderr.write(
-                        f"Error configuring logging from {log_conf_file_path}: {e}. Using basic config.\n"
-                    )
+                    sys.stderr.write(f"Error configuring logging from {log_conf_file_path}: {e}. Using basic config.\n")
                     _setup_basic_logging(log_to_console)
             else:
                 _setup_basic_logging(log_to_console)

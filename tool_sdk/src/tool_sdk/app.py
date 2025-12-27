@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from tool_sdk.core.manifest import Manifest, MethodSpec, build_manifest
+from tool_sdk.core.introspection import get_function_schema
 from tool_sdk.logging import get_logger
 
 logger = get_logger(__name__)
@@ -16,12 +17,12 @@ logger = get_logger(__name__)
 
 class InvokeRequest(BaseModel):
     method: str
-    args: List[Any] = []
-    kwargs: Dict[str, Any] = {}
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI, manifests: List[Manifest]):
+async def lifespan(app: FastAPI, manifests: list[Manifest]):
     server_url = os.getenv("MCP_SERVER_URL")
     if not server_url:
         server_port = os.getenv("MCP_SERVER_PORT", "5000")
@@ -57,10 +58,10 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
       - a collection of standalone functions decorated with @mcp_tool(name=...)
     """
 
-    method_map: Dict[str, Callable] = {}
+    method_map: dict[str, Callable] = {}
     tool_url = os.getenv("TOOL_PUBLIC_URL")
 
-    grouped: Dict[str, Dict[str, Any]] = {}
+    grouped: dict[str, dict[str, Any]] = {}
     funcs = list(tool) if isinstance(tool, Iterable) and not callable(tool) else [tool]  # type: ignore[arg-type]
 
     for f in funcs:
@@ -84,15 +85,18 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
         grouped[tool_name]["methods"].append(f.__name__)
         method_map[f.__name__] = f
 
-    manifests: List[Manifest] = []
+    manifests: list[Manifest] = []
     for tool_name, data in grouped.items():
-        method_specs: List[MethodSpec] = []
+        method_specs: list[MethodSpec] = []
         for idx, method_name in enumerate(data["methods"]):
             doc = data["descriptions"][idx]
+            fn = method_map[method_name]
+            schema = get_function_schema(fn)
             method_specs.append(
                 MethodSpec(
                     name=method_name,
                     description=doc,
+                    parameters=schema,
                     path=f"/invoke/{method_name}",
                     http_method="POST",
                 )
@@ -126,7 +130,7 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
 
         app.post(route_path)(endpoint_factory(fn))
 
-    @app.get("/manifest", response_model=List[Manifest])
+    @app.get("/manifest", response_model=list[Manifest])
     async def get_manifest():
         return manifests
 
