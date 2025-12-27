@@ -2,7 +2,7 @@
 name = "ap-mcp"
 version = "0.0.0"  # This is a placeholder, version is determined by git tag during CI/CD
 description = "MCP server with compatible SDK for Advanced Python Programming course."
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
     "fastapi>=0.119.0",
