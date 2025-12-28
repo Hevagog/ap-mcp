@@ -45,7 +45,7 @@ class Registry:
                 extra={"meta_entry": meta_entry, "tool_name": meta_entry["name"]},
             )
             try:
-                self._vec_db.add([meta_entry["description"]])
+                self._vec_db.add([meta_entry["description"]], metadata=meta_entry)
             except Exception:
                 logger.exception("Failed to index tool description")
 
@@ -153,10 +153,11 @@ class Registry:
     def _get_tool_names(self) -> list[str]:
         return list(self.tool_registry.keys())
 
-    def get_tool_definitions(self) -> dict[str, dict[str, Any]]:
-        defs = {}
-        for k, v in self.tool_registry.items():
-            defs[k] = {key: val for key, val in v.items() if key != "callable"}
+    def get_tool_definitions(self) -> list[dict[str, Any]]:
+        defs = []
+        for _, v in self.tool_registry.items():
+            tool_def = {key: val for key, val in v.items() if key != "callable"}
+            defs.append(tool_def)
         return defs
 
     def query_tools_by_description(self, description: str, top_k: int = 5) -> list[dict]:

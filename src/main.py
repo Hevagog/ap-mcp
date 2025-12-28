@@ -34,3 +34,11 @@ async def ready() -> dict[str, str | int]:
         }
     except Exception as e:
         return {"status": "not-ready", "error": str(e)}
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    reload = os.getenv("FLAVOR") == "localdev"
+    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=reload)
