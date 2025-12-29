@@ -14,7 +14,9 @@ class LLMOrchestrator:
         self._llm = LocalLLM()
         logger.debug("Initialized LLMOrchestrator with local LLM")
 
-    def _filter_callable_tools(self, tool_metadata_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _filter_callable_tools(
+        self, tool_metadata_list: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         filtered: list[dict[str, Any]] = []
 
         for tool_meta in tool_metadata_list:
@@ -31,7 +33,9 @@ class LLMOrchestrator:
 
         return filtered
 
-    def _invoke_tool(self, tool_name: str, arguments: dict[str, Any]) -> ToolInvocationResult:
+    def _invoke_tool(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> ToolInvocationResult:
         try:
             result = registry.call_tool(tool_name, **arguments)
             return ToolInvocationResult(
@@ -42,7 +46,9 @@ class LLMOrchestrator:
                 error=None,
             )
         except KeyError as e:
-            logger.error(f"Tool not found: {tool_name}", extra={"error": str(e)})
+            logger.error(
+                "Tool not found", extra={"tool_name": tool_name, "error": str(e)}
+            )
             return ToolInvocationResult(
                 tool_name=tool_name,
                 arguments=arguments,
@@ -51,7 +57,9 @@ class LLMOrchestrator:
                 error=f"Tool not found: {tool_name}",
             )
         except Exception as e:
-            logger.exception("Error invoking tool", extra={"tool_name": tool_name, "error": str(e)})
+            logger.exception(
+                "Error invoking tool", extra={"tool_name": tool_name, "error": str(e)}
+            )
             return ToolInvocationResult(
                 tool_name=tool_name,
                 arguments=arguments,
@@ -60,7 +68,9 @@ class LLMOrchestrator:
                 error=str(e),
             )
 
-    async def process_message(self, user_message: str, top_k: int = 3) -> OrchestratorResponse:
+    async def process_message(
+        self, user_message: str, top_k: int = 3
+    ) -> OrchestratorResponse:
         """
         Process a user message by:
         1. Querying the vector DB for relevant tools
@@ -79,7 +89,8 @@ class LLMOrchestrator:
         tool_names = [t.get("name", "") for t in tool_matches if t.get("name")]
 
         logger.info(
-            f"Found candidate tools: \n user_message: {user_message}, candidates: {tool_names}",
+            "Found candidate tools",
+            extra={"user_message": user_message, "candidates": tool_names},
         )
 
         if not tool_matches:

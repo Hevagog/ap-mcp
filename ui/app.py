@@ -27,7 +27,10 @@ async def read_root(request: Request):
         if response.status_code == 200:
             tools = response.json()
     except Exception as e:
-        logger.warning(f"Error fetching tools: {e}")
+        logger.warning(
+            "Error fetching tools",
+            extra={"exception": e},
+        )
 
     return templates.TemplateResponse("index.html", {"request": request, "tools": tools})
 

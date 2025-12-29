@@ -159,7 +159,7 @@ class Registry:
         return defs
 
     def query_tools_by_description(self, description: str, top_k: int = 5) -> list[dict[str, Any]]:
-        logger.info(f"Querying dbase with following description: {description}")
+        logger.info("Querying dbase", extra={"description": description})
         return self._vec_db.text_query(description, top_k=top_k)
 
 
