@@ -4,7 +4,10 @@ import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from logger import get_logger
 from pydantic import BaseModel
+
+logger = get_logger(__name__)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -24,7 +27,7 @@ async def read_root(request: Request):
         if response.status_code == 200:
             tools = response.json()
     except Exception as e:
-        print(f"Error fetching tools: {e}")
+        logger.warning(f"Error fetching tools: {e}")
 
     return templates.TemplateResponse("index.html", {"request": request, "tools": tools})
 
@@ -32,9 +35,7 @@ async def read_root(request: Request):
 @app.post("/chat")
 async def chat(message: ChatMessage):
     try:
-        response = requests.post(
-            f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30
-        )
+        response = requests.post(f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30)
         response.raise_for_status()
         return response.json()
     except Exception as e:

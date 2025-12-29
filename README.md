@@ -28,7 +28,7 @@ Please create a `.env` file in the project root with the `API_KEY` variable set 
 
 ## UI
 
-A Streamlit-based chat interface is available at http://localhost:8501.
+A chat interface is available at http://localhost:8501.
 It connects to the MCP Server and uses Gemini to intelligently invoke registered tools.
 
 ## Authoring tools

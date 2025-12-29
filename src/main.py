@@ -38,7 +38,9 @@ async def ready() -> dict[str, str | int]:
 
 if __name__ == "__main__":
     import os
+
     import uvicorn
 
     reload = os.getenv("FLAVOR") == "localdev"
-    uvicorn.run("main:app", host="0.0.0.0", port=80, reload=reload)
+    port = int(os.getenv("PORT", 80))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=reload)

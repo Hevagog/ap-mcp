@@ -67,7 +67,14 @@
                 });
 
                 const data = await response.json();
-                addMessage('MCP', data.content, 'bot-msg');
+                let responseText = data.message;
+                if (data.tool_invocation && data.tool_invocation.success) {
+                    const inv = data.tool_invocation;
+                    responseText = `<strong>Tool:</strong> ${inv.tool_name}<br>` +
+                                   `<strong>Arguments:</strong> ${JSON.stringify(inv.arguments)}<br>` +
+                                   `<strong>Result:</strong> ${inv.result}`;
+                }
+                addMessage('MCP', responseText, 'bot-msg');
             } catch (error) {
                 addMessage('System', 'Error communicating with server', 'error-msg');
                 console.error(error);
