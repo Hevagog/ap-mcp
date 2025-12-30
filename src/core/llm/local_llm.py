@@ -5,6 +5,7 @@ import ollama
 from ollama import Client
 
 from core import get_logger
+from core.exceptions import GenerationError, OllamaAPIError, ToolSelectionError
 
 logger = get_logger(__name__)
 
@@ -121,7 +122,53 @@ class LocalLLM:
                     "tools_sent": formatted_tools,
                 },
             )
-            return {"tool_name": None, "arguments": {}}
+            raise OllamaAPIError(f"Ollama API failed with status {e.status_code}") from e
         except Exception as e:
             logger.exception("Unexpected error during tool selection", extra={"error": str(e)})
-            return {"tool_name": None, "arguments": {}}
+            raise ToolSelectionError("An unexpected error occurred while selecting a tool.") from e
+
+    def chat(self, user_message: str) -> str:
+        system_prompt = (
+            "You are a helpful and polite AI assistant. "
+            "Answer the user's questions clearly and concisely. "
+            "If the user asks about capabilities you don't have (like real-time data), "
+            "politely explain that you are a language model."
+        )
+
+        try:
+            response = self._client.chat(
+                model=self._model_name,
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
+                options={"temperature": 0.7},
+            )
+            return response.message.content
+        except Exception as e:
+            logger.error(f"Failed to generate chat response: {e}")
+            raise GenerationError("Failed to generate chat response") from e
+
+    def generate_response(self, user_message: str, tool_name: str, tool_result: Any) -> str:
+        system_prompt = (
+            "You are a helpful assistant. You have just executed a tool to help the user. "
+            "Use the provided tool output to answer the user's original question naturally. "
+            "If the tool output is an error, explain it clearly. "
+            "Do not expose internal technical details (like JSON keys) unless necessary."
+        )
+
+        prompt = f"""
+        User Query: {user_message}
+        Tool Used: {tool_name}
+        Tool Output: {str(tool_result)}
+
+        Please provide a concise and helpful response to the user based on this information.
+        """
+
+        try:
+            response = self._client.chat(
+                model=self._model_name,
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                options={"temperature": 0.3},
+            )
+            return response.message.content
+        except Exception as e:
+            logger.error(f"Failed to generate synthesis response: {e}")
+            raise GenerationError("Failed to generate synthesis response") from e

@@ -1,6 +1,7 @@
 from typing import Any
 
 from core import get_logger, registry
+from core.exceptions import GenerationError, OllamaAPIError, ToolSelectionError
 from core.llm import LocalLLM
 from core.models import OrchestratorResponse, ToolInvocationResult
 
@@ -14,9 +15,7 @@ class LLMOrchestrator:
         self._llm = LocalLLM()
         logger.debug("Initialized LLMOrchestrator with local LLM")
 
-    def _filter_callable_tools(
-        self, tool_metadata_list: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _filter_callable_tools(self, tool_metadata_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
         filtered: list[dict[str, Any]] = []
 
         for tool_meta in tool_metadata_list:
@@ -33,9 +32,7 @@ class LLMOrchestrator:
 
         return filtered
 
-    def _invoke_tool(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> ToolInvocationResult:
+    def _invoke_tool(self, tool_name: str, arguments: dict[str, Any]) -> ToolInvocationResult:
         try:
             result = registry.call_tool(tool_name, **arguments)
             return ToolInvocationResult(
@@ -46,9 +43,7 @@ class LLMOrchestrator:
                 error=None,
             )
         except KeyError as e:
-            logger.error(
-                "Tool not found", extra={"tool_name": tool_name, "error": str(e)}
-            )
+            logger.error("Tool not found", extra={"tool_name": tool_name, "error": str(e)})
             return ToolInvocationResult(
                 tool_name=tool_name,
                 arguments=arguments,
@@ -57,9 +52,7 @@ class LLMOrchestrator:
                 error=f"Tool not found: {tool_name}",
             )
         except Exception as e:
-            logger.exception(
-                "Error invoking tool", extra={"tool_name": tool_name, "error": str(e)}
-            )
+            logger.exception("Error invoking tool", extra={"tool_name": tool_name, "error": str(e)})
             return ToolInvocationResult(
                 tool_name=tool_name,
                 arguments=arguments,
@@ -68,9 +61,7 @@ class LLMOrchestrator:
                 error=str(e),
             )
 
-    async def process_message(
-        self, user_message: str, top_k: int = 3
-    ) -> OrchestratorResponse:
+    async def process_message(self, user_message: str, top_k: int = 3) -> OrchestratorResponse:
         """
         Process a user message by:
         1. Querying the vector DB for relevant tools
@@ -93,56 +84,57 @@ class LLMOrchestrator:
             extra={"user_message": user_message, "candidates": tool_names},
         )
 
+        invocation_result, selected_tool, tool_data = None, None, None
+
         if not tool_matches:
-            return OrchestratorResponse(
-                message="No tools found matching your request.",
-                tool_invocation=None,
-                raw_tool_matches=[],
-            )
+            logger.info("No tools found matching user request")
 
         callable_tools = self._filter_callable_tools(tool_matches)
 
-        if not callable_tools:
-            return OrchestratorResponse(
-                message="Found tools but no callable methods available.",
-                tool_invocation=None,
-                raw_tool_matches=tool_names,
-            )
+        if callable_tools:
+            try:
+                selection = self._llm.select_tool(user_message, callable_tools)
+                selected_tool = selection.get("tool_name")
+                arguments = selection.get("arguments", {})
 
+                if selected_tool:
+                    logger.info(
+                        "LLM selected tool",
+                        extra={"tool_name": selected_tool, "arguments": arguments},
+                    )
+                    invocation_result = self._invoke_tool(selected_tool, arguments)
+
+                    if invocation_result.success:
+                        tool_data = invocation_result.result
+                    else:
+                        tool_data = f"Error: {invocation_result.error}"
+                else:
+                    logger.info("LLM decided not to select any tool.")
+
+            except (OllamaAPIError, ToolSelectionError) as e:
+                logger.exception("LLM tool selection failed", extra={"error": str(e)})
+                return OrchestratorResponse(
+                    message=f"Error during tool selection: {e}",
+                    tool_invocation=None,
+                    raw_tool_matches=tool_names,
+                )
         try:
-            selection = self._llm.select_tool(user_message, callable_tools)
-        except Exception as e:
-            logger.exception("LLM tool selection failed", extra={"error": str(e)})
-            return OrchestratorResponse(
-                message=f"Error during tool selection: {e}",
-                tool_invocation=None,
-                raw_tool_matches=tool_names,
-            )
+            if selected_tool and tool_data:
+                final_response_text = self._llm.generate_response(
+                    user_message=user_message, tool_name=selected_tool, tool_result=tool_data
+                )
+            else:
+                logger.info("No tool used. Falling back to general conversation.")
+                final_response_text = self._llm.chat(user_message)
 
-        selected_tool = selection.get("tool_name")
-        arguments = selection.get("arguments", {})
-
-        if not selected_tool:
-            return OrchestratorResponse(
-                message="I couldn't determine which tool to use for your request.",
-                tool_invocation=None,
-                raw_tool_matches=tool_names,
-            )
-
-        logger.info(
-            "LLM selected tool",
-            extra={"tool_name": selected_tool, "arguments": arguments},
-        )
-
-        invocation_result = self._invoke_tool(selected_tool, arguments)
-
-        if invocation_result.success:
-            message = f"Result: {invocation_result.result}"
-        else:
-            message = f"Error: {invocation_result.error}"
+        except GenerationError as e:
+            logger.error(f"Response generation failed: {e}")
+            final_response_text = "I'm sorry, I encountered an error while processing your request."
+            if tool_data:
+                final_response_text += f"\n\nTechnical Result: {tool_data}"
 
         return OrchestratorResponse(
-            message=message,
+            message=final_response_text,
             tool_invocation=invocation_result,
             raw_tool_matches=tool_names,
         )
