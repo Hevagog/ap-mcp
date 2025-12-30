@@ -128,7 +128,10 @@ class LLMOrchestrator:
                 final_response_text = self._llm.chat(user_message)
 
         except GenerationError as e:
-            logger.error(f"Response generation failed: {e}")
+            logger.error(
+                "Response generation failed",
+                extra={"exception": e},
+            )
             final_response_text = "I'm sorry, I encountered an error while processing your request."
             if tool_data:
                 final_response_text += f"\n\nTechnical Result: {tool_data}"

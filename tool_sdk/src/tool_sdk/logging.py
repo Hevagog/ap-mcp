@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 try:
     from logger import get_logger as _shared_get_logger  # type: ignore
 
-    def get_logger(name: Optional[str] = None):
+    def get_logger(name: Optional[str] = None) -> logging.Logger:
         return _shared_get_logger(name)
 
 except Exception:
-    import logging
     import sys
 
     _configured = False
 
-    def _configure_basic():
+    def _configure_basic() -> None:
         global _configured
         if _configured:
             return
@@ -26,6 +26,6 @@ except Exception:
         )
         _configured = True
 
-    def get_logger(name: Optional[str] = None):
+    def get_logger(name: Optional[str] = None) -> logging.Logger:
         _configure_basic()
         return logging.getLogger(name or "tool_sdk")

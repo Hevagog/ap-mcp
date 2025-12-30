@@ -1,6 +1,5 @@
 """Sentence embedder using HuggingFace sentence-transformers."""
 
-import numpy as np
 from numpy import ndarray
 from sentence_transformers import SentenceTransformer
 
@@ -19,17 +18,13 @@ class SentenceEmbedder:
 
     _instance: "SentenceEmbedder | None" = None
 
-    def __init__(
-        self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ) -> None:
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
         """Initialize the embedder (called only once due to singleton)."""
         self._model_name = model_name
         self._model: SentenceTransformer | None = None
         self._initialized = False
 
-    def __new__(
-        cls, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    ) -> "SentenceEmbedder":
+    def __new__(cls, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> "SentenceEmbedder":
         """Singleton pattern to avoid loading the model multiple times."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)

@@ -43,4 +43,4 @@ if __name__ == "__main__":
 
     reload = os.getenv("FLAVOR") == "localdev"
     port = int(os.getenv("PORT", 80))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=reload)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=reload)  # noqa: S104

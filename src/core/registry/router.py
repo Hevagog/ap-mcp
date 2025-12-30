@@ -27,14 +27,10 @@ async def get_tool_definitions() -> list[dict[str, Any]]:
 @router.post("/tools/call")
 async def call_tool(request: ToolCallRequest) -> dict[str, Any]:
     try:
-        result = tool_registry.call_tool(
-            request.tool_name, *request.args, **request.kwargs
-        )
+        result = tool_registry.call_tool(request.tool_name, *request.args, **request.kwargs)
         return {"result": result}
     except Exception as e:
-        logger.error(
-            "Error calling tool", extra={"tool_name": request.tool_name, "exception": e}
-        )
+        logger.error("Error calling tool", extra={"tool_name": request.tool_name, "exception": e})
         raise HTTPException(status_code=500, detail=str(e))
 
 

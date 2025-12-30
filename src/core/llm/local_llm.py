@@ -143,7 +143,10 @@ class LocalLLM:
             )
             return response.message.content
         except Exception as e:
-            logger.error(f"Failed to generate chat response: {e}")
+            logger.error(
+                "Failed to generate chat response",
+                extra={"exception": e},
+            )
             raise GenerationError("Failed to generate chat response") from e
 
     def generate_response(self, user_message: str, tool_name: str, tool_result: Any) -> str:
@@ -170,5 +173,8 @@ class LocalLLM:
             )
             return response.message.content
         except Exception as e:
-            logger.error(f"Failed to generate synthesis response: {e}")
+            logger.error(
+                "Failed to generate synthesis response",
+                extra={"exception": e},
+            )
             raise GenerationError("Failed to generate synthesis response") from e

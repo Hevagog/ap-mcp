@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -20,7 +21,7 @@ class ChatMessage(BaseModel):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+async def read_root(request: Request) -> Any:
     tools = []
     try:
         response = requests.get(f"{MCP_SERVER_URL}/tools/definitions", timeout=5)
@@ -32,13 +33,17 @@ async def read_root(request: Request):
             extra={"exception": e},
         )
 
-    return templates.TemplateResponse("index.html", {"request": request, "tools": tools})
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "tools": tools}
+    )
 
 
 @app.post("/chat")
-async def chat(message: ChatMessage):
+async def chat(message: ChatMessage) -> Any:
     try:
-        response = requests.post(f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30)
+        response = requests.post(
+            f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30
+        )
         response.raise_for_status()
         return response.json()
     except Exception as e:

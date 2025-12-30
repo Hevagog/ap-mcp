@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Callable, Iterable, DefaultDict
+from typing import Any, Dict, List, Callable, Iterable, DefaultDict, AsyncGenerator
 from functools import partial
 from contextlib import asynccontextmanager
 import httpx
@@ -16,13 +16,14 @@ logger = get_logger(__name__)
 
 
 class InvokeRequest(BaseModel):
-    method: str
-    args: list[Any] = []
-    kwargs: dict[str, Any] = {}
+    args: List[Any] = []
+    kwargs: Dict[str, Any] = {}
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI, manifests: list[Manifest]):
+async def lifespan(
+    app: FastAPI, manifests: list[Manifest]
+) -> AsyncGenerator[None, None]:
     server_url = os.getenv("MCP_SERVER_URL")
     if not server_url:
         server_port = os.getenv("MCP_SERVER_PORT", "5000")
@@ -59,7 +60,7 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
     """
 
     method_map: dict[str, Callable] = {}
-    tool_url = os.getenv("TOOL_PUBLIC_URL")
+    tool_url = os.getenv("TOOL_PUBLIC_URL", "")
 
     grouped: dict[str, dict[str, Any]] = {}
     funcs = list(tool) if isinstance(tool, Iterable) and not callable(tool) else [tool]  # type: ignore[arg-type]
@@ -87,7 +88,7 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
 
     manifests: list[Manifest] = []
     for tool_name, data in grouped.items():
-        method_specs: list[MethodSpec] = []
+        method_specs: list[MethodSpec | str] = []
         for idx, method_name in enumerate(data["methods"]):
             doc = data["descriptions"][idx]
             fn = method_map[method_name]
@@ -118,8 +119,8 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
     for method_name, fn in method_map.items():
         route_path = f"/invoke/{method_name}"
 
-        def endpoint_factory(f: Callable):
-            async def _endpoint(req: InvokeRequest):
+        def endpoint_factory(f: Callable) -> Callable:
+            async def _endpoint(req: InvokeRequest) -> dict[str, Any]:
                 try:
                     result = f(*req.args, **req.kwargs)
                     return {"result": result}
@@ -131,7 +132,7 @@ def create_app(tool: Callable | Iterable[Callable]) -> FastAPI:
         app.post(route_path)(endpoint_factory(fn))
 
     @app.get("/manifest", response_model=list[Manifest])
-    async def get_manifest():
+    async def get_manifest() -> list[Manifest]:
         return manifests
 
     return app
