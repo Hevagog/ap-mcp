@@ -1,7 +1,7 @@
 set dotenv-load
 
 CONTAINER_NAME := "mcp_server"
-PYTHONPATH := "./src"
+PYTHONPATH := "./src/server"
 WORKDIR := "/code"
 PATHS_TO_LINT := "src tests"
 TEST_PATH := "tests"

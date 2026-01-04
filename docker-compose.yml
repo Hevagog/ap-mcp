@@ -20,7 +20,7 @@ services:
       args:
         - BUILD_COMMIT_SHA=localdev
     command: >-
-      bash -c "uv run python main.py"
+      bash -c "cd /code/src/server && uv run python main.py"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:5000/ready\")'"]
       interval: 3s
@@ -47,12 +47,12 @@ services:
   ui:
     build:
       context: .
-      dockerfile: ui/Dockerfile
+      dockerfile: src/ui/Dockerfile
     container_name: mcp_ui
     network_mode: "host"
     volumes:
-      - "./ui:/app"
-      - "./src/core/logger:/app/logger"
+      - "./src/ui:/app"
+      - "./src/server/core/logger:/app/logger"
     environment:
       - MCP_SERVER_URL=http://localhost:5000
     env_file:

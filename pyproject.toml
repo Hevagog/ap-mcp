@@ -74,7 +74,7 @@ exclude_lines = [
 ]
 
 [tool.fawltydeps]
-code = ["src"]
+code = ["src/server", "src/ui", "tools", "tool_sdk"]
 deps = ["pyproject.toml"]
 ignore_unused = [
     "uvicorn",
@@ -101,6 +101,7 @@ no_implicit_optional = false
 disable_error_code = "misc"
 
 [tool.pytest.ini_options]
+pythonpath = ["src/server"]
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "--strict-markers -p no:warnings --cov=. --cov-fail-under=15 --cov-config=.coveragerc"
 asyncio_mode = "auto"

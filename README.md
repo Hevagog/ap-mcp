@@ -60,7 +60,7 @@ just run
 ```
 
 **Data flow:**
-1. User sends message via UI → Server `/message` endpoint
+1. User sends message via UI $\rightarrow$ Server `/message` endpoint
 2. `LLMOrchestrator` queries VectorDB for semantically similar tools
 3. Ollama selects the best tool and extracts arguments via native tool calling
 4. Server proxies the call to the tool's HTTP endpoint
@@ -97,8 +97,8 @@ just run
 A chat interface is available at http://localhost:8501. It connects to the MCP Server and uses Ollama to intelligently select and invoke registered tools based on natural language queries.
 
 **Example interactions:**
-- "What is 5 plus 3?" → Invokes `calculator.add(5, 3)`
-- "Add 10 and 20" → Invokes `calculator.add(10, 20)`
+- "What is 5 plus 3?" $\rightarrow$ Invokes `calculator.add(5, 3)`
+- "Add 10 and 20" $\rightarrow$ Invokes `calculator.add(10, 20)`
 
 ## Authoring Tools
 
@@ -178,27 +178,4 @@ just test         # Run pytest
 just lint_full    # Run ruff + mypy + fawltydeps
 just lint_fix     # Auto-fix linting issues
 just dc <cmd>     # Run command inside Docker (e.g., just dc test)
-```
-
-### Project Structure
-
-```
-ap-mcp/
-├── src/                    # MCP Server
-│   ├── main.py             # FastAPI app entry point
-│   └── core/
-│       ├── llm/            # Ollama integration
-│       ├── orchestrator/   # LLM orchestration logic
-│       ├── registry/       # Tool registry
-│       ├── vec_db/         # Vector database (sentence-transformers)
-│       └── embedder/       # Embedding service
-├── tool_sdk/               # SDK for building tools
-│   └── src/tool_sdk/
-│       ├── app.py          # create_app() and auto-registration
-│       └── core/
-│           ├── decorators.py   # @mcp_tool decorator
-│           └── manifest.py     # Pydantic models
-├── tools/                  # Example tools
-│   └── calculator_tool/
-└── ui/                     # Chat interface
 ```

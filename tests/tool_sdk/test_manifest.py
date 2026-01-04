@@ -18,7 +18,7 @@ def load_module(path: Path, name: str) -> types.ModuleType:
 
 
 def test_build_manifest_from_strings() -> None:
-    top = Path(__file__).resolve().parents[1]
+    top = Path(__file__).resolve().parents[2]
     manifest_path = top / "tool_sdk" / "src" / "tool_sdk" / "core" / "manifest.py"
     mod = load_module(manifest_path, "tool_sdk_manifest")
     build_manifest = mod.build_manifest
@@ -30,7 +30,7 @@ def test_build_manifest_from_strings() -> None:
 
 
 def test_build_manifest_with_methodspec() -> None:
-    top = Path(__file__).resolve().parents[1]
+    top = Path(__file__).resolve().parents[2]
     manifest_path = top / "tool_sdk" / "src" / "tool_sdk" / "core" / "manifest.py"
     mod = load_module(manifest_path, "tool_sdk_manifest2")
     build_manifest = mod.build_manifest
