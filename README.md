@@ -1,59 +1,181 @@
 # ap-mcp: MCP server + functional SDK with auto-registration
 
-Overview
+## Overview
 
 FastAPI MCP server + functional SDK for building tools as plain Python functions. Tools expose a FastAPI app, auto-register a manifest with the MCP server on startup, and the server routes calls to per-function endpoints.
 
-## How to run:
+**Key features:**
+- **Semantic tool discovery** – Uses sentence-transformers (`all-MiniLM-L6-v2`) to match user queries to tool descriptions
+- **Native LLM tool calling** – Ollama with `qwen2.5:1.5b` (**or any other tool-calling model**) selects and parameterizes tools
+- **Auto-registration** – Tools register themselves on startup; no manual configuration needed
+- **Functional SDK** – Write tools as plain Python functions with decorators
+
+## Prerequisites
+
+### Ollama (Required)
+
+The server uses [Ollama](https://ollama.ai) for LLM-powered tool selection. Install and start Ollama before running.
 
 ```shell
+curl -fsSL https://ollama.com/install.sh | sh
+ollama serve
+ollama pull qwen2.5:1.5b
+```
+
+> **Note:** The server will auto-pull the model on first startup if not present, but this may take some time.
+
+**Supported models:** Any Ollama model with native tool calling support works. Configure via `OLLAMA_MODEL` env var.
+
+## Quick Start
+
+```shell
+cd ap-mcp
+ollama serve
 just run
 ```
 
-Please create a `.env` file in the project root with the `API_KEY` variable set to *Gemini Developer API* key.
+## Architecture
 
+```
+┌─────────────┐     ┌─────────────────────────────────────────────────┐
+│     UI      │     │                  MCP Server                     │
+│ (port 8501) │────▶│  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+└─────────────┘     │  │ Registry │  │ VectorDB │  │ Orchestrator │   │
+                    │  └──────────┘  └──────────┘  └──────────────┘   │
+                    │       │              │              │           │
+                    │       ▼              ▼              ▼           │
+                    │  ┌─────────────────────────────────────────┐    │
+                    │  │           Ollama (LLM)                  │    │
+                    │  │   Tool selection & response synthesis   │    │
+                    │  └─────────────────────────────────────────┘    │
+                    └──────────────────────┬──────────────────────────┘
+                                           │ HTTP proxy calls
+                    ┌──────────────────────▼──────────────────────┐
+                    │              External Tools                 │
+                    │  ┌────────────────┐  ┌────────────────┐     │
+                    │  │ calculator_tool│  │  (your tool)   │     │
+                    │  │  (port 5080)   │  │                │     │
+                    │  └────────────────┘  └────────────────┘     │
+                    └─────────────────────────────────────────────┘
+```
 
-## Services and endpoints
+**Data flow:**
+1. User sends message via UI $\rightarrow$ Server `/message` endpoint
+2. `LLMOrchestrator` queries VectorDB for semantically similar tools
+3. Ollama selects the best tool and extracts arguments via native tool calling
+4. Server proxies the call to the tool's HTTP endpoint
+5. Ollama synthesizes a natural language response from the tool output
 
- - Server (host): http://localhost:5000
-	 - GET `/` → basic message
-	 - GET `/health` → liveness
-	 - GET `/ready` → readiness (Compose healthcheck uses this)
-	 - POST `/register` → tools POST their manifest here on startup
-	 - GET `/tools` → lists the registry names (includes top-level tool and per-method proxies; e.g., `calculator`, `calculator.add`)
- - Tool (host): http://localhost:5080
-	 - GET `/manifest` → list[Manifest] (one per tool group)
-	 - POST `/invoke/{function_name}` → per-function endpoint (e.g., `/invoke/add`)
-	 - POST `/invoke` → generic invoker with body `{method, args, kwargs}` (kept for compatibility)
+## Services and Endpoints
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **MCP Server** | http://localhost:5000 | Central hub |
+| **Calculator Tool** | http://localhost:5080 | Example tool |
+| **UI** | http://localhost:8501 | Chat interface |
+
+### Server Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Basic status message |
+| GET | `/health` | Liveness probe |
+| GET | `/ready` | Readiness probe (used by Docker healthcheck) |
+| POST | `/register` | Tools POST their manifest here on startup |
+| GET | `/tools` | List registered tools (e.g., `calculator`, `calculator.add`) |
+| POST | `/message` | Main chat endpoint – handles user messages |
+
+### Tool Endpoints (per tool)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/manifest` | Returns `list[Manifest]` for the tool |
+| POST | `/invoke/{function_name}` | Invoke a specific function (e.g., `/invoke/add`) |
 
 ## UI
 
-A Streamlit-based chat interface is available at http://localhost:8501.
-It connects to the MCP Server and uses Gemini to intelligently invoke registered tools.
+A chat interface is available at http://localhost:8501. It connects to the MCP Server and uses Ollama to intelligently select and invoke registered tools based on natural language queries.
 
-## Authoring tools
+**Example interactions:**
+- "What is 5 plus 3?" $\rightarrow$ Invokes `calculator.add(5, 3)`
+- "Add 10 and 20" $\rightarrow$ Invokes `calculator.add(10, 20)`
+
+## Authoring Tools
 
 Annotate functions with `@mcp_tool(name=...)` and pass them to `create_app`:
 
 ```python
 from tool_sdk import mcp_tool, create_app
+import uvicorn
+import os
 
 @mcp_tool(name="calculator")
 def add(a: int, b: int) -> int:
-		"""Add two integers and return the result."""
-		return a + b
+    """Add two integers and return the result."""
+    return a + b
 
-app = create_app([add])  # or multiple functions: create_app([add, mul, ...])
+@mcp_tool(name="calculator")
+def multiply(a: int, b: int) -> int:
+    """Multiply two integers and return the product."""
+    return a * b
+
+if __name__ == "__main__":
+    app = create_app([add, multiply])
+    port = int(os.environ.get("TOOL_PORT", "5080"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 ```
 
-### How registration works
- 1. Tool starts its FastAPI app via the SDK.
- 2. SDK builds a manifest per tool group:
-		- name: group name (from `@mcp_tool(name=...)`)
-		- base_url: TOOL_PUBLIC_URL
-		- methods: [{name, description, path, http_method}] built from each function’s docstring and generated route `/invoke/{name}` (POST)
- 3. SDK POSTs the manifest(s) to `${MCP_SERVER_URL}/register`.
- 4. Server validates and stores:
-		- a top-level entry for the tool group (metadata)
-		- a per-method proxy (e.g., `calculator.add`) that calls the tool’s `/invoke/{method}`.
- 5. Server indexes semantics using the method docstrings (vector DB).
+> **Important:** Docstrings are **critical** – they are indexed by the VectorDB for semantic search. Write clear, descriptive docstrings that explain what the function does.
+
+### How Registration Works
+
+1. Tool starts its FastAPI app via the SDK
+2. SDK builds a manifest per tool group:
+   - `name`: group name (from `@mcp_tool(name=...)`)
+   - `base_url`: `TOOL_PUBLIC_URL` env var
+   - `methods`: `[{name, description, parameters, path, http_method}]` built from function signatures and docstrings
+3. SDK POSTs the manifest(s) to `${MCP_SERVER_URL}/register`
+4. Server validates and stores:
+   - A top-level entry for the tool group (metadata)
+   - A per-method proxy (e.g., `calculator.add`) that calls the tool's `/invoke/{method}`
+5. Server indexes method descriptions in the VectorDB for semantic search
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `qwen2.5:1.5b` | LLM model for tool selection |
+| `MCP_SERVER_URL` | `http://mcp_server:5000` | Server URL (for tools) |
+| `TOOL_PUBLIC_URL` | – | Public URL of the tool (for registration) |
+| `TOOL_PORT` | `5080` | Port for tool service |
+| `PORT` | `5000` | Port for MCP server |
+| `FLAVOR` | – | Set to `localdev` for hot reload |
+
+### Using a Different Ollama Model
+
+```shell
+# Set via environment variable
+export OLLAMA_MODEL=llama3.1:8b
+just run
+
+# Or in docker-compose.yml
+environment:
+  - OLLAMA_MODEL=qwen2.5:7b
+```
+
+## Development
+
+### Commands (using `just`)
+
+```shell
+just run          # Start full stack (Docker Compose)
+just build        # Build Docker images
+just shell <svc>  # Interactive shell in container (e.g., just shell mcp_server)
+just test         # Run pytest
+just lint_full    # Run ruff + mypy + fawltydeps
+just lint_fix     # Auto-fix linting issues
+just dc <cmd>     # Run command inside Docker (e.g., just dc test)
+```

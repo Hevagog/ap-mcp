@@ -1,6 +1,9 @@
 x-ap-mcp: &ap-mcp-config
   environment:
     - FLAVOR=localdev
+    - OLLAMA_HOST=http://localhost:11434
+    - PORT=5000
+  network_mode: "host"
   image: apmcp-dev
   pull_policy: never
   volumes:
@@ -17,17 +20,13 @@ services:
       args:
         - BUILD_COMMIT_SHA=localdev
     command: >-
-      bash -c "uv run --no-sync python main:app --host 0.0.0.0 --reload --port 80"
-    ports:
-      - "${MCP_SERVER_PORT:-5000}:80"
+      bash -c "cd /code/src/server && uv run python main.py"
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import os,urllib.request;port=os.environ.get(\"MCP_SERVER_PORT\",\"5000\");urllib.request.urlopen(f\"http://localhost:{port}/ready\")'"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:5000/ready\")'"]
       interval: 3s
       timeout: 5s
       retries: 10
       start_period: 5s
-    networks:
-      - mcp_net
 
   calculator_tool:
     build:
@@ -38,31 +37,26 @@ services:
         condition: service_healthy
         restart: true
     container_name: calculator_tool
-    ports:
-      - "5080:5080"
+    network_mode: "host"
     environment:
       - TOOL_PORT=5080
       - MCP_SERVER_PORT=5000
-      - MCP_SERVER_URL=http://mcp_server:5000
-      - TOOL_PUBLIC_URL=http://calculator_tool:5080
-    networks:
-      - mcp_net
+      - MCP_SERVER_URL=http://localhost:5000
+      - TOOL_PUBLIC_URL=http://localhost:5080
 
-  # ui:
-  #   build: ui
-  #   container_name: mcp_ui
-  #   ports:
-  #     - "8501:8501"
-  #   environment:
-  #     - MCP_SERVER_URL=http://mcp_server:5000
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     mcp_server:
-  #       condition: service_healthy
-  #   networks:
-  #     - mcp_net
-
-networks:
-  mcp_net:
-    driver: bridge
+  ui:
+    build:
+      context: .
+      dockerfile: src/ui/Dockerfile
+    container_name: mcp_ui
+    network_mode: "host"
+    volumes:
+      - "./src/ui:/app"
+      - "./src/server/core/logger:/app/logger"
+    environment:
+      - MCP_SERVER_URL=http://localhost:5000
+    env_file:
+      - .env
+    depends_on:
+      mcp_server:
+        condition: service_healthy

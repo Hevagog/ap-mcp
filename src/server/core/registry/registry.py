@@ -1,16 +1,9 @@
-import os
-from functools import partial
 from typing import Any, Callable
 
 import httpx
-from google import genai
-from google.genai import types
 
 from core import get_logger
 from core.vec_db import VectorDB
-
-client = genai.Client(api_key=os.getenv("API_KEY"))
-
 
 logger = get_logger(__name__)
 
@@ -19,15 +12,7 @@ class Registry:
     def __init__(self, name: str):
         logger.debug("Initializing registry", extra={"registry_name": name})
         self.tool_registry: dict[str, dict[str, Any]] = {}
-        self._model = "gemini-embedding-001"
-        self.config = types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY")
-        self._vec_db = VectorDB(
-            embedding_function=partial(
-                client.models.embed_content,
-                model=self._model,
-                config=self.config,
-            )
-        )
+        self._vec_db = VectorDB()
 
     def core_tool(self, name: str | None = None, tags: list[str] | None = None, **meta: Any) -> Callable:
         def decorator(func: Callable) -> Callable:
@@ -45,7 +30,7 @@ class Registry:
                 extra={"meta_entry": meta_entry, "tool_name": meta_entry["name"]},
             )
             try:
-                self._vec_db.add([meta_entry["description"]])
+                self._vec_db.add(meta_entry["description"], metadata=meta_entry)
             except Exception:
                 logger.exception("Failed to index tool description")
 
@@ -73,7 +58,11 @@ class Registry:
 
         def _make_proxy(method_name: str, path: str | None = None, http_method: str | None = None) -> Callable:
             def _proxy(*args: Any, **kwargs: Any) -> Any:
-                payload = {"method": method_name, "args": list(args), "kwargs": str(kwargs)}
+                payload = {
+                    "method": method_name,
+                    "args": list(args),
+                    "kwargs": kwargs,
+                }
                 with httpx.Client(timeout=30.0) as client_http:
                     target_path = path or f"/invoke/{method_name}"
                     url = f"{base_url}{target_path}"
@@ -108,11 +97,17 @@ class Registry:
 
         if description:
             try:
-                self._vec_db.add(description, tool_name)
+                self._vec_db.add(description, metadata=meta_entry)
             except Exception as e:
-                logger.warning("Failed to index tool description", extra={"tool_name": tool_name, "exception": e})
+                logger.warning(
+                    "Failed to index tool description",
+                    extra={"tool_name": tool_name, "exception": e},
+                )
 
-        logger.info("Registered external tool", extra={"tool_name": tool_name, "base_url": base_url})
+        logger.info(
+            "Registered external tool",
+            extra={"tool_name": tool_name, "base_url": base_url},
+        )
 
         for m in methods:
             m_name = m.get("name")
@@ -138,9 +133,12 @@ class Registry:
             logger.debug("Registered method proxy", extra={"fq_name": fq_name})
             if m_desc:
                 try:
-                    self._vec_db.add(m_desc, fq_name)
+                    self._vec_db.add(m_desc, metadata=entry)
                 except Exception:
-                    logger.exception("Failed to index method description", extra={"method_name": fq_name})
+                    logger.exception(
+                        "Failed to index method description",
+                        extra={"method_name": fq_name},
+                    )
 
     def list_tools(self) -> list[str]:
         return self._get_tool_names()
@@ -153,13 +151,15 @@ class Registry:
     def _get_tool_names(self) -> list[str]:
         return list(self.tool_registry.keys())
 
-    def get_tool_definitions(self) -> dict[str, dict[str, Any]]:
-        defs = {}
-        for k, v in self.tool_registry.items():
-            defs[k] = {key: val for key, val in v.items() if key != "callable"}
+    def get_tool_definitions(self) -> list[dict[str, Any]]:
+        defs = []
+        for _, v in self.tool_registry.items():
+            tool_def = {key: val for key, val in v.items() if key != "callable"}
+            defs.append(tool_def)
         return defs
 
-    def query_tools_by_description(self, description: str, top_k: int = 5) -> list[dict]:
+    def query_tools_by_description(self, description: str, top_k: int = 5) -> list[dict[str, Any]]:
+        logger.info("Querying dbase", extra={"description": description})
         return self._vec_db.text_query(description, top_k=top_k)
 
 
