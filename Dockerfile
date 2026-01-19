@@ -58,4 +58,4 @@ ENTRYPOINT ["/code/docker-entrypoint.sh"]
 EXPOSE 80/tcp
 
 # Runs the production server
-CMD ["uv", "run", "--no-sync", "python", "main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uv", "run", "main.py"]

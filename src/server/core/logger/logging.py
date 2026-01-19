@@ -1,3 +1,4 @@
+import json
 import logging
 import logging.config
 import os
@@ -8,6 +9,47 @@ from logging import Logger
 from typing import Optional
 
 _logger_configured = False
+
+
+standard_attrs = {
+    "name",
+    "msg",
+    "args",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "message",
+    "asctime",
+}
+
+
+class ExtraFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        message = super().format(record)
+        extra = {k: v for k, v in record.__dict__.items() if k not in standard_attrs}
+
+        if extra:
+            try:
+                extra_str = json.dumps(extra, default=str)
+                message = f"{message} | extra: {extra_str}"
+            except Exception:
+                message = f"{message} | extra: {extra}"
+
+        return message
 
 
 def _get_logging_config() -> dict:
@@ -93,12 +135,19 @@ def configure_logger() -> None:
 def _setup_basic_logging(log_to_console: bool = True) -> None:
     """Setup basic logging configuration"""
     if log_to_console:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s.%(msecs)03d - %(module)-30s %(lineno)-4d - %(levelname)-8s - %(message)s",
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = ExtraFormatter(
+            fmt="%(asctime)s.%(msecs)03d - %(module)-30s %(lineno)-4d - %(levelname)-8s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
-            stream=sys.stdout,
         )
+        handler.setFormatter(formatter)
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+
+        for h in root_logger.handlers[:]:
+            root_logger.removeHandler(h)
+        root_logger.addHandler(handler)
     else:
         # Minimal logging if console is disabled and no file logging
         logging.basicConfig(level=logging.WARNING)

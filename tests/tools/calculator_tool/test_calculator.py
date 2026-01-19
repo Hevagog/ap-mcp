@@ -19,7 +19,7 @@ def load_module(path: Path, name: str) -> types.ModuleType:
 
 
 def test_add_basic() -> None:
-    top = Path(__file__).resolve().parents[1]
+    top = Path(__file__).resolve().parents[3]
     svc_path = top / "tools" / "calculator_tool" / "src" / "service.py"
     stub = types.ModuleType("tool_sdk")
     stub.mcp_tool = lambda **kwargs: (lambda f: f)  # type: ignore[attr-defined]

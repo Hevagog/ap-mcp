@@ -1,6 +1,4 @@
 from fastapi import APIRouter
-from .schemas import CodeInput, CodeOutput
-from .service import execute_code
 
 router = APIRouter()
 

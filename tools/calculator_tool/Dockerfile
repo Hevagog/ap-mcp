@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY src/core/logger/ logger/
+COPY src/server/core/logger/ logger/
 COPY tool_sdk/ /tool_sdk/
 
 RUN pip install --no-cache-dir uv

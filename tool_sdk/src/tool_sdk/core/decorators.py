@@ -1,8 +1,8 @@
 from functools import wraps
-from typing import Any
+from typing import Any, Callable
 
 
-def mcp_tool(name: str):
+def mcp_tool(name: str) -> Callable[[Any], Any]:
     """
     Annotation decorator to mark a function as an MCP tool.
     Args:
@@ -10,7 +10,7 @@ def mcp_tool(name: str):
     - Function: attaches __mcp_tool_meta__ so the SDK can discover it.
     """
 
-    def decorator(target: Any):
+    def decorator(target: Any) -> Any:
         meta = {
             "name": name,
             "description": target.__doc__,

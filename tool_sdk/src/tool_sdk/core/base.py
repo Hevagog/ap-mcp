@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class ToolBase(ABC):
@@ -7,4 +8,4 @@ class ToolBase(ABC):
     capabilities: list[str]
 
     @abstractmethod
-    def execute(self, method: str, **kwargs): ...
+    def execute(self, method: str, **kwargs: Any) -> Any: ...
