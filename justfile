@@ -4,6 +4,7 @@ CONTAINER_NAME := "mcp_server"
 PYTHONPATH := "./src/server"
 WORKDIR := "/code"
 PATHS_TO_LINT := "src tests"
+PATHS_TO_TYPE_CHECK := "src"
 TEST_PATH := "tests"
 ANSWERS_FILE := ".copier/.copier-answers.copier-python-project.yml"
 
@@ -98,7 +99,7 @@ alias full_lint_ff := lint_full_ff
 [group("lint")]
 [doc("Run mypy check (type checking)")]
 mypy: _set_pythonpath
-	uv run mypy {{PATHS_TO_LINT}} --show-error-codes --show-traceback --implicit-reexport
+	uv run mypy {{PATHS_TO_TYPE_CHECK}} --show-error-codes --show-traceback --implicit-reexport
 
 [group("development")]
 [doc("Open python console (useful when prefixed with dc, as it opens python console inside docker)")]

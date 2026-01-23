@@ -68,7 +68,7 @@ class Registry:
                     url = f"{base_url}{target_path}"
                     method = (http_method or "POST").upper()
                     if method == "GET":
-                        resp = client_http.get(url, params=payload)
+                        resp = client_http.get(url, params=payload)  # type: ignore
                     else:
                         resp = client_http.post(url, json=payload)
                     resp.raise_for_status()

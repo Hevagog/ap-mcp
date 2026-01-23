@@ -1,7 +1,7 @@
 import os
 from typing import Any
 
-import requests
+import requests  # type: ignore
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -33,17 +33,13 @@ async def read_root(request: Request) -> Any:
             extra={"exception": e},
         )
 
-    return templates.TemplateResponse(
-        "index.html", {"request": request, "tools": tools}
-    )
+    return templates.TemplateResponse("index.html", {"request": request, "tools": tools})
 
 
 @app.post("/chat")
 async def chat(message: ChatMessage) -> Any:
     try:
-        response = requests.post(
-            f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30
-        )
+        response = requests.post(f"{MCP_SERVER_URL}/message", json={"content": message.content}, timeout=30)
         response.raise_for_status()
         return response.json()
     except Exception as e:
@@ -53,4 +49,4 @@ async def chat(message: ChatMessage) -> Any:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8501)
+    uvicorn.run(app, host="0.0.0.0", port=8501)  # noqa: S104

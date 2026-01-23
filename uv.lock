@@ -36,6 +36,7 @@ dependencies = [
     { name = "ollama" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "sentence-transformers" },
     { name = "uvicorn" },
 ]
@@ -65,6 +66,7 @@ requires-dist = [
     { name = "ollama", specifier = ">=0.4.5" },
     { name = "pydantic", specifier = ">=2.12.3" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "sentence-transformers", specifier = ">=3.3.1" },
     { name = "uvicorn", specifier = ">=0.38.0" },
 ]
