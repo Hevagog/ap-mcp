@@ -34,11 +34,14 @@ class LocalLLM:
             installed_models = []
             for m in models:
                 if hasattr(m, "model"):
-                    installed_models.append(m.model)
+                    val = m.model
                 elif isinstance(m, dict):
-                    installed_models.append(m.get("name") or m.get("model"))
+                    val = m.get("name") or m.get("model")
                 else:
-                    installed_models.append(str(m))
+                    val = str(m)
+
+                if val:
+                    installed_models.append(val)
 
             if not any(self._model_name in model for model in installed_models):
                 logger.info(
@@ -141,7 +144,7 @@ class LocalLLM:
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
                 options={"temperature": 0.7},
             )
-            return response.message.content
+            return response.message.content or ""
         except Exception as e:
             logger.error(
                 "Failed to generate chat response",
@@ -171,7 +174,7 @@ class LocalLLM:
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
                 options={"temperature": 0.3},
             )
-            return response.message.content
+            return response.message.content or ""
         except Exception as e:
             logger.error(
                 "Failed to generate synthesis response",

@@ -8,20 +8,20 @@ from core.vec_db.dbase import VectorDB
 
 class TestVectorDB:
     @pytest.fixture()
-    def mock_embedder(self):
+    def mock_embedder(self) -> MagicMock:
         embedder = MagicMock()
         embedder.embed.side_effect = lambda _: np.array([0.1, 0.2, 0.3])
         return embedder
 
     @pytest.fixture()
-    def db(self, mock_embedder):
+    def db(self, mock_embedder: MagicMock) -> VectorDB:
         return VectorDB(embedder=mock_embedder)
 
-    def test_initialization(self, db):
+    def test_initialization(self, db: VectorDB) -> None:
         assert db.entries == []
         assert db._embedder is not None
 
-    def test_add_entry(self, db, mock_embedder):
+    def test_add_entry(self, db: VectorDB, mock_embedder: MagicMock) -> None:
         # Arrange
         mock_embedder.embed.side_effect = None
         mock_embedder.embed.return_value = np.array([1.0, 0.0, 0.0])
@@ -33,11 +33,11 @@ class TestVectorDB:
         assert db.entries[0]["metadata"] == {"id": 1}
         mock_embedder.embed.assert_called_with("test description")
 
-    def test_query_empty_db(self, db):
+    def test_query_empty_db(self, db: VectorDB) -> None:
         results = db.query(np.array([1.0, 0.0, 0.0]))
         assert results == []
 
-    def test_query_logic(self, db):
+    def test_query_logic(self, db: VectorDB) -> None:
         # Arrange
         db.entries = [
             {"vector": np.array([1.0, 0.0]), "metadata": {"name": "aligned"}},
@@ -53,7 +53,7 @@ class TestVectorDB:
         assert results[1]["name"] == "orthogonal"
         assert results[2]["name"] == "opposite"
 
-    def test_query_top_k(self, db):
+    def test_query_top_k(self, db: VectorDB) -> None:
         # Arrange
         db.entries = [{"vector": np.array([1.0]), "metadata": {"id": i}} for i in range(5)]
         # Act
@@ -61,9 +61,9 @@ class TestVectorDB:
         # Assert
         assert len(results) == 2
 
-    def test_text_query(self, db, mock_embedder):
+    def test_text_query(self, db: VectorDB, mock_embedder: MagicMock) -> None:
         # Arrange
-        def side_effect(text):
+        def side_effect(text: str) -> np.ndarray:
             if text == "query":
                 return np.array([1.0, 0.0])
             return np.array([0.0, 1.0])
@@ -80,7 +80,7 @@ class TestVectorDB:
         assert results[0]["id"] == "stored"
         mock_embedder.embed.assert_any_call("query")
 
-    def test_division_by_zero_prevention(self, db):
+    def test_division_by_zero_prevention(self, db: VectorDB) -> None:
         # Arrange
         db.entries = [{"vector": np.array([0.0, 0.0]), "metadata": {"id": "zero"}}]
         query_vec = np.array([1.0, 0.0])
@@ -92,7 +92,7 @@ class TestVectorDB:
         assert len(results) == 1
         assert results[0]["id"] == "zero"
 
-    def test_embed_text_list_handling(self, db, mock_embedder):
+    def test_embed_text_list_handling(self, db: VectorDB, mock_embedder: MagicMock) -> None:
         mock_embedder.embed.return_value = np.array([1.0])
         db.add(["list input"], {"id": 1})
         mock_embedder.embed.assert_called_with("list input")
